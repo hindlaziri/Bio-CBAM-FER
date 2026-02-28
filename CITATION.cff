@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: "Bio-CBAM: A Neuro-Guided Attention Mechanism for Robust Facial Expression Recognition in the Wild"
+authors:
+  - family-names: "Laziri"
+    given-names: "Hind"
+    affiliation: "University of Chouaib Doukkali"
+    orcid: "https://orcid.org/0000-0000-0000-0000"  # Remplacer par votre ORCID
+  - family-names: "[Co-author 1]"
+    given-names: "[First name]"
+  - family-names: "[Co-author 2]"
+    given-names: "[First name]"
+date-released: 2026-03-01
+version: "1.0.0"
+doi: "10.5281/zenodo.XXXXXXX"  # Sera rempli après Zenodo
+repository-code: "https://github.com/[username]/Bio-CBAM-FER"
+repository: "https://github.com/[username]/Bio-CBAM-FER"
+url: "https://github.com/[username]/Bio-CBAM-FER"
+abstract: "Bio-CBAM integrates fMRI-derived spatial priors with CBAM attention mechanisms for emotion recognition."
+keywords:
+  - "facial expression recognition"
+  - "attention mechanisms"
+  - "neuro-guided learning"
+  - "fMRI"
+  - "deep learning"
+license: "MIT"
