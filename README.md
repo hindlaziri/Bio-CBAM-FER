@@ -1,12 +1,13 @@
 # Bio-CBAM: Neuro-Guided Attention for Facial Emotion Recognition
 
+
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 1.9+](https://img.shields.io/badge/pytorch-1.9+-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Paper](https://img.shields.io/badge/Paper-MTAP-green.svg)](#citation)
 
 ##  Overview
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18818259.svg )](https://doi.org/10.5281/zenodo.18818259 )
 **Bio-CBAM** is a novel attention mechanism for Facial Emotion Recognition (FER) that integrates neuroscientific insights from fMRI data to guide deep learning models. By leveraging statistical priors derived from functional magnetic resonance imaging, Bio-CBAM improves both the **accuracy** and **interpretability** of emotion recognition systems in unconstrained, real-world environments.
 
 ### Key Features
