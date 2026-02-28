@@ -1,0 +1,28 @@
+{
+  "title": "Bio-CBAM: A Neuro-Guided Attention Mechanism for Robust Facial Expression Recognition in the Wild",
+  "description": "Implementation and evaluation of Bio-CBAM, a deep learning model that integrates fMRI-derived spatial priors with CBAM attention mechanisms for facial expression recognition.",
+  "creators": [
+    {
+      "name": "Laziri, Hind",
+      "affiliation": "University of Chouaib Doukkali"
+    }
+  ],
+  "keywords": [
+    "facial expression recognition",
+    "attention mechanisms",
+    "neuro-guided learning",
+    "fMRI",
+    "deep learning",
+    "emotion recognition"
+  ],
+  "publication_date": "2026-03-01",
+  "version": "1.0.0",
+  "license": "MIT",
+  "related_identifiers": [
+    {
+      "identifier": "10.1007/s11042-XXX-XXXX-X",
+      "relation": "isSupplementedBy",
+      "resource_type": "publication-article"
+    }
+  ]
+}
