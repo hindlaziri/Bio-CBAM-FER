@@ -1,0 +1,3 @@
+source_x,source_y,target_x,target_y
+# Replace the commented placeholder below with experimentally defined correspondences.
+# Do not treat these columns as an anatomical brain-to-muscle projection.

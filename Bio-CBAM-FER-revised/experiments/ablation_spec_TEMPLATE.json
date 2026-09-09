@@ -1,0 +1,24 @@
+{
+  "seeds": [42, 123, 456, 789, 999],
+  "base_args": [
+    "--dataset", "fer2013",
+    "--data-path", "/ABSOLUTE/PATH/fer2013.csv",
+    "--num-classes", "7",
+    "--backbone", "resnet50",
+    "--pretrained",
+    "--epochs", "100",
+    "--batch-size", "32",
+    "--learning-rate", "0.0001",
+    "--weight-decay", "0.0001",
+    "--lambda-init", "0.0",
+    "--monitor", "f1_macro"
+  ],
+  "variants": {
+    "fmri": ["/ABSOLUTE/PATH/prior_fmri.npy"],
+    "random_matched": ["/ABSOLUTE/PATH/prior_random_matched_seed{seed}.npy"],
+    "gaussian_center": ["/ABSOLUTE/PATH/prior_gaussian_center.npy"],
+    "generic_saliency": ["/ABSOLUTE/PATH/prior_generic_saliency.npy"],
+    "cbam": [],
+    "resnet": []
+  }
+}

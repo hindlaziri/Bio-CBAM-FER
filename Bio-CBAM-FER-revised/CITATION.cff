@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, cite the software package and the associated manuscript when its bibliographic record is available."
+title: "Bio-CBAM: Reproducible Neuro-Guided Attention Research Code"
+type: software
+authors:
+  - family-names: "Laziri"
+    given-names: "Hind"
+  - family-names: "Riffi"
+    given-names: "Mohammed Essaid"
+version: "2.0.0-revised"
+repository-code: "https://github.com/hindlaziri/Bio-CBAM-FER"
+url: "https://github.com/hindlaziri/Bio-CBAM-FER"
+abstract: "Research code for multi-scale CBAM with externally supplied, auditable spatial priors; the repository does not bundle human data or precomputed scientific results."
+keywords:
+  - "facial expression recognition"
+  - "attention mechanisms"
+  - "neuro-guided learning"
+  - "reproducibility"
+license: "MIT"
