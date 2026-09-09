@@ -1,217 +1,219 @@
-# Bio-CBAM: A Neuro-Guided Attention Mechanism for Robust Facial Expression Recognition
+# Bio-CBAM — Code expérimental révisé
 
-## Overview
+Ce dépôt fournit une implémentation reproductible de **Bio-CBAM**, où un prior spatial externe est combiné aux logits d’attention spatiale CBAM après chacun des quatre stages d’un backbone ResNet. La fusion suit
 
-Bio-CBAM integrates fMRI-derived spatial priors with Convolutional Block Attention Modules (CBAM) for facial expression recognition in unconstrained environments. This repository contains the complete implementation, preprocessing pipeline, and evaluation code for the paper submitted to **Multimedia Tools and Applications (MTAP)**.
+\[
+M_b = \sigma(Z_b + \lambda_b H_b), \qquad F'_b = F_b \odot M_b,
+\]
 
-## Key Features
+où chaque $\lambda_b$ est appris et enregistré dans les checkpoints.
 
-- **Neuro-Guided Attention**: Integrates fMRI-derived spatial priors to guide attention towards neurobiologically relevant facial regions
-- **CBAM Architecture**: Combines channel and spatial attention mechanisms for robust feature learning
-- **Multi-Dataset Support**: Supports FER-2013, CK+, and JAFFE datasets
-- **Comprehensive Evaluation**: Includes training, evaluation, and reproducibility testing scripts
-- **High Performance**: Achieves 94.7% accuracy on FER-2013 4-class subset and 74.8% on 7-class benchmark
-- **Reproducibility**: Validated across 5 independent runs with different random seeds
+> **État scientifique.** Le package ne contient ni données humaines, ni cartes fMRI, ni résultats pré-calculés. Il ne revendique donc aucun score avant exécution sur les données réelles. Les tableaux du manuscrit doivent être remplis uniquement à partir des fichiers JSON produits par ces scripts.
 
-## Performance
+## Composants
 
-| Dataset | Classes | Accuracy | Precision | Recall | F1-Score |
-|---------|---------|----------|-----------|--------|----------|
-| FER-2013 | 7-class | 74.8% | 75.2% | 74.8% | 74.9% |
-| FER-2013 | 4-class | 94.7% | 94.8% | 94.7% | 94.7% |
-| CK+ | 7-class | 96.3% | 96.5% | 96.3% | 96.4% |
-| JAFFE | 7-class | 93.7% | 93.9% | 93.7% | 93.8% |
-
-## Project Structure
-
-```
-Bio-CBAM-FER/
-├── models/
-│   ├── __init__.py
-│   └── bio_cbam.py              # Bio-CBAM model implementation
-├── dataset_scripts/
-│   ├── __init__.py
-│   └── dataset_loader.py        # Dataset loading and preprocessing
-├── weights/
-│   └── (pre-trained model weights)
-├── docs/
-│   ├── INSTALL.md               # Installation guide
-│   └── USAGE.md                 # Usage guide
-├── train.py                     # Training script
-├── eval.py                      # Evaluation script
-├── reproducibility_test.py      # Reproducibility testing
-├── requirements.txt             # Python dependencies
-├── README.md                    # This file
-└── .gitignore
-```
+| Dossier ou fichier | Fonction |
+|---|---|
+| `models/bio_cbam.py` | ResNet-18/50 multi-échelle, quatre Bio-CBAM, portes $\lambda_b$ et mélange de priors sans utilisation de l’étiquette vraie |
+| `priors/fmri_pipeline.py` | Chargement des cartes statistiques, projection 2D documentée, normalisation et TPS à partir de correspondances explicites |
+| `priors/variants.py` | Priors de contrôle aléatoire apparié, gaussien central et salience spectrale générique |
+| `dataset_scripts/dataset_loader.py` | Splits officiels FER-2013, manifests par sujet pour CK+/JAFFE et audit SSIM |
+| `dataset_scripts/prepare_manifests.py` | Création des manifests CK+/JAFFE et folds strictement séparés par sujet |
+| `train.py` | Entraînement, validation, checkpointing, reprise et évaluation finale unique du test |
+| `eval.py` | Reconstruction exacte et évaluation d’un checkpoint |
+| `experiments/` | Ablations, statistiques, McNemar, robustesse, attention, complexité et tableaux LaTeX |
+| `tests/` | Tests logiciels synthétiques, jamais utilisés comme résultats scientifiques |
 
 ## Installation
 
-### Quick Start
+Une version moderne de Python 3.10–3.12 est recommandée. Créez un environnement isolé, puis installez les dépendances :
 
 ```bash
-# Clone repository
-git clone https://github.com/hindlaziri/Bio-CBAM-FER.git
-cd Bio-CBAM-FER
-
-# Create virtual environment
-conda create -n bio-cbam python=3.9
-conda activate bio-cbam
-
-# Install dependencies
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-For detailed installation instructions, see [docs/INSTALL.md](docs/INSTALL.md).
+Pour une installation CUDA, installez d’abord la version de PyTorch compatible avec votre pilote depuis le sélecteur officiel, puis exécutez la dernière commande.
 
-## Usage
+## 1. Construction d’un prior fMRI/TPS
 
-### Training
+Le pipeline exige une carte d’activation réelle et un CSV contenant `source_x,source_y,target_x,target_y`. Ces correspondances constituent une hypothèse expérimentale documentée, et non une projection anatomique cerveau–muscle.
+
+```bash
+python -m priors.generate_fmri_priors \
+  --source /ABSOLUTE/PATH/group_stat_map.npy \
+  --correspondences /ABSOLUTE/PATH/correspondences.csv \
+  --output-stem artifacts/priors/fmri \
+  --height 224 --width 224 \
+  --activation-mode positive \
+  --threshold-percentile 95 \
+  --smooth-sigma 2.0 \
+  --tps-regularization 0.001
+```
+
+L’exécution produit `.npy`, `.png` et `.json`, avec checksums des entrées et de la sortie. Voir `priors/README.md`.
+
+## 2. Priors de contrôle
+
+```bash
+python -m priors.variants random_matched \
+  --reference artifacts/priors/fmri.npy --seed 42 \
+  --output-stem artifacts/priors/random_matched_seed42
+
+python -m priors.variants gaussian_center \
+  --height 224 --width 224 --sigma-fraction 0.2 \
+  --output-stem artifacts/priors/gaussian_center
+
+python -m priors.variants generic_saliency \
+  --fer-csv /ABSOLUTE/PATH/fer2013.csv \
+  --output-stem artifacts/priors/generic_saliency
+```
+
+La salience générique est la moyenne, sur le training set uniquement, des cartes obtenues par l’algorithme spectral residual. L’algorithme et le nombre d’images sont enregistrés dans les métadonnées.
+
+## 3. FER-2013
+
+Le loader utilise exclusivement `Training`, `PublicTest` et `PrivateTest`. FER-2013 ne fournit pas d’identifiants de sujets; le code ne qualifie donc pas ce protocole de subject-independent.
+
+### Sept classes officielles
 
 ```bash
 python train.py \
-    --dataset fer2013 \
-    --data-dir ./data/fer2013 \
-    --num-classes 7 \
-    --batch-size 32 \
-    --num-epochs 100 \
-    --learning-rate 0.001 \
-    --backbone resnet50 \
-    --device cuda
+  --dataset fer2013 \
+  --data-path /ABSOLUTE/PATH/fer2013.csv \
+  --output-dir runs/fer7/fmri/seed_42 \
+  --num-classes 7 \
+  --prior artifacts/priors/fmri.npy --require-prior \
+  --backbone resnet50 --pretrained \
+  --epochs 100 --batch-size 32 --seed 42 --amp
 ```
 
-### Evaluation
+### Sous-ensemble strict de quatre classes
+
+Le réglage par défaut conserve uniquement `angry,happy,sad,neutral`. Il ne fusionne aucune classe et refuse explicitement l’étiquette non officielle « Confusion ».
 
 ```bash
-python eval.py \
-    --model-path ./checkpoints/best_model.pth \
-    --dataset fer2013 \
-    --data-dir ./data/fer2013 \
-    --num-classes 7 \
-    --output-dir ./results
+python train.py \
+  --dataset fer2013 \
+  --data-path /ABSOLUTE/PATH/fer2013.csv \
+  --output-dir runs/fer4/fmri/seed_42 \
+  --num-classes 4 \
+  --four-classes angry,happy,sad,neutral \
+  --prior artifacts/priors/fmri.npy --require-prior \
+  --backbone resnet50 --pretrained --seed 42
 ```
 
-### Reproducibility Testing
+Le filtrage SSIM est optionnel et ne retire que des quasi-doublons du training set. Il produit `ssim_training_audit.json`. Les partitions de validation et de test ne sont jamais modifiées.
+
+## 4. CK+ et JAFFE avec séparation par sujet
+
+Créez d’abord un manifest sans colonne `split`, puis générez les folds. Pour JAFFE :
 
 ```bash
-python reproducibility_test.py \
-    --dataset fer2013 \
-    --data-dir ./data/fer2013 \
-    --num-classes 7 \
-    --num-runs 5 \
-    --output-dir ./reproducibility
+python -m dataset_scripts.prepare_manifests jaffe \
+  --images /ABSOLUTE/PATH/jaffe \
+  --output manifests/jaffe_all.csv
+
+python -m dataset_scripts.prepare_manifests folds \
+  --manifest manifests/jaffe_all.csv \
+  --output-dir manifests/jaffe_folds --folds 5 --seed 42
 ```
 
-For detailed usage instructions, see [docs/USAGE.md](docs/USAGE.md).
+Pour CK+ :
 
-## Model Architecture
+```bash
+python -m dataset_scripts.prepare_manifests ckplus \
+  --images /ABSOLUTE/PATH/cohn-kanade-images \
+  --emotion-labels /ABSOLUTE/PATH/Emotion \
+  --output manifests/ckplus_all.csv
 
-### Bio-CBAM Components
-
-1. **fMRI Prior Module**: Generates spatial attention maps from fMRI-derived priors
-2. **Channel Attention**: Learns channel-wise feature importance
-3. **Spatial Attention**: Learns spatial feature importance
-4. **Classification Head**: Emotion classification from learned features
-
-### Backbone Options
-
-- **ResNet-18**: Lightweight, faster training
-- **ResNet-50**: Better accuracy, larger model
-
-## Datasets
-
-### FER-2013
-- 35,887 images
-- 7 emotion classes
-- 48×48 grayscale images
-- Download: https://www.kaggle.com/datasets/msambare/fer2013
-
-### CK+
-- 593 sequences from 123 subjects
-- 7 emotion classes
-- High-quality, controlled environment
-- Download: https://www.jeffcohn.com/databases/
-
-### JAFFE
-- 213 images from 10 female subjects
-- 7 emotion classes
-- Diverse expression variations
-- Download: https://zenodo.org/record/3451524
-
-## Key Features
-
-### Data Preprocessing
-- SSIM-based filtering to remove near-duplicate images
-- Prevents data leakage between train/val/test splits
-- Quantitative analysis of dataset entropy
-
-### Attention Mechanisms
-- Channel Attention Module (CAM)
-- Spatial Attention Module (SAM)
-- fMRI-guided spatial priors
-
-### Evaluation Metrics
-- Accuracy, Precision, Recall, F1-Score
-- Per-class metrics
-- Confusion matrix
-- Cross-validation analysis
-
-### Reproducibility
-- Fixed random seeds (42, 123, 456, 789, 999)
-- Multiple independent runs
-- Statistical analysis of results
-- Detailed logging
-
-## Citation
-
-If you use Bio-CBAM in your research, please cite:
-
-```bibtex
-@article{laziri2026biocbam,
-  title={Bio-CBAM: A Neuro-Guided Attention Mechanism for Robust Facial Expression Recognition in the Wild},
-  author={Laziri, Hind and Riffi, Mohammed Essaid},
-  journal={Multimedia Tools and Applications},
-  year={2026},
-  publisher={Springer}
-}
+python -m dataset_scripts.prepare_manifests folds \
+  --manifest manifests/ckplus_all.csv \
+  --output-dir manifests/ckplus_folds --folds 5 --seed 42
 ```
 
-## Code Availability
+Chaque manifest final contient `path`, `label`, `subject_id` et `split`. Le loader s’arrête si un sujet apparaît dans plusieurs partitions.
 
-Complete code and pre-trained weights are available at:
-- **GitHub**: https://github.com/hindlaziri/Bio-CBAM-FER
-- **Zenodo**: https://doi.org/10.5281/zenodo.18818259
+## 5. Ablations multi-runs
 
-## License
+Copiez `experiments/ablation_spec_TEMPLATE.json`, remplacez tous les chemins, puis lancez :
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+```bash
+python experiments/run_ablation.py \
+  --spec experiments/ablation_spec.json \
+  --output-root runs/fer7_ablation
+```
 
-## Acknowledgments
+Chaque variante utilise les mêmes seeds et hyperparamètres. `resnet` constitue la baseline sans attention; `cbam` applique l’attention standard sans prior; les autres variantes utilisent Bio-CBAM avec le prior indiqué.
 
-- FER-2013 dataset: Goodfellow et al.
-- CK+ dataset: Kanade et al.
-- JAFFE dataset: Lyons et al.
-- ResNet backbone: He et al.
-- CBAM: Woo et al.
+## 6. Statistiques
 
-## Contact
+```bash
+python experiments/analyze_runs.py \
+  --root runs/fer7_ablation \
+  --metric test_metrics.accuracy \
+  --reference fmri \
+  --output-dir reports/statistics
+```
 
-For questions or issues, please contact:
-- **Author**: Hind Laziri
-- **Email**: (as provided to MTAP)
-- **Affiliation**: Department of Computer Science, Chouaib Doukali Faculty, El Jadida, Morocco
+Lorsque les seeds correspondent exactement, l’outil applique un test t apparié bilatéral et rapporte Cohen $d_z$. Dans le cas contraire, il utilise le test de Welch et Hedges $g$. Les comparaisons au modèle de référence sont corrigées par la procédure de Holm.
 
-## References
+Pour des checkpoints évalués sur les mêmes exemples :
 
-1. Goodfellow, I. J., et al. (2013). Challenges in representation learning: A report on three machine learning contests. ICONIP.
-2. Kanade, T., et al. (2000). The CMU pose, illumination, and expression database. IEEE TPAMI.
-3. Lyons, M. J., et al. (1998). Automatic classification of single facial images. IEEE TPAMI.
-4. He, K., et al. (2016). Deep residual learning for image recognition. CVPR.
-5. Woo, S., et al. (2018). CBAM: Convolutional block attention module. ECCV.
+```bash
+python experiments/compare_predictions.py \
+  --reference fmri=runs/fmri/seed_42/test/predictions.json \
+  --comparison gaussian=runs/gaussian/seed_42/test/predictions.json \
+  --comparison random=runs/random/seed_42/test/predictions.json \
+  --output reports/mcnemar.json
+```
 
----
+## 7. Complexité, robustesse et attention
 
-**Status**: ✅ Ready for Publication
-**Last Updated**: February 28, 2026
-**Version**: 1.0 (Final)
+```bash
+python experiments/profile_model.py \
+  --checkpoint runs/fer7/fmri/seed_42/best_checkpoint.pt \
+  --batch-size 1 --warmup 20 --repeats 100 \
+  --device cuda --output reports/profile.json
+
+python experiments/evaluate_robustness.py \
+  --checkpoint runs/fer7/fmri/seed_42/best_checkpoint.pt \
+  --output reports/robustness.json
+
+python experiments/evaluate_attention.py \
+  --checkpoint runs/fer7/fmri/seed_42/best_checkpoint.pt \
+  --stage 4 --max-images 100 \
+  --output-dir reports/attention
+```
+
+`evaluate_attention.py` accepte en option un CSV `identifier,map_path` pour calculer AUC, NSS, corrélation, divergence KL et similarité avec des cartes oculométriques ou masques indépendants. Sans références, il exporte uniquement les cartes et superpositions; il ne prétend pas valider leur alignement humain.
+
+## 8. Tableaux LaTeX
+
+```bash
+python experiments/export_latex_tables.py \
+  --statistics-json reports/statistics/statistics.json \
+  --profile-json reports/profile.json \
+  --robustness-json reports/robustness.json \
+  --output reports/generated_results.tex
+```
+
+Le fichier généré porte un avertissement indiquant que les valeurs proviennent des sorties expérimentales. Les comparaisons SOTA restent indicatives lorsque les protocoles diffèrent.
+
+## 9. Tests logiciels
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Les tests utilisent exclusivement des tableaux synthétiques pour valider le logiciel. Ils ne mesurent aucune performance FER.
+
+## Limites et éléments à fournir
+
+Le code est prêt à exécuter, mais une reproduction scientifique nécessite encore les données sous licence, la carte fMRI de groupe ou les cartes autorisées, le fichier réel de correspondances TPS, ainsi que les détails d’approbation éthique applicables aux données humaines. Les scores historiques du manuscrit ne sont pas intégrés au code : ils doivent être régénérés et vérifiés à partir des runs archivés.
+
+## Licence et citation
+
+Consultez `LICENSE` et `CITATION.cff`. La citation d’un article non encore publié doit conserver son statut de manuscrit soumis ou de prépublication, sans l’annoncer comme article déjà accepté.
